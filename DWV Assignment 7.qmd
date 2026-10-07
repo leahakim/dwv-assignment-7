@@ -1,0 +1,215 @@
+---
+title: "DWV Assignment 7"
+author: "Leah Kim"
+format: typst
+---
+
+library(expss)
+library(tidyverse)
+library(foreign)
+library(haven)
+library(dplyr)
+library(ggplot2)
+library(lattice)
+
+#Load the data 
+anes <- read_dta('/Users/leahkim/Desktop/academics ✩ ° ｡⋆/PAI 741/Data for HW/anes_timeseries_cdf_stata_20220916.dta')
+
+#party identification, 7pt scale 
+anes$VCF0301
+
+anes_sub <- anes |> select(VCF0301, VCF0004)
+anes_sub <- filter(anes_sub, VCF0004 >= 1952 )
+table(anes_sub$VCF0301)
+unique(anes_sub$VCF0301)
+
+#Questions 1 and 2
+#Figure 1(a): The Distribution of Party Identification, 1952-2026
+#Recode for "Strong" and "Weak" Identifiers 
+figure1 <- anes_sub |>
+  filter(VCF0004 >= 1952, VCF0301 %in% 1:7) |>
+  mutate(
+    pid_strength = case_when(
+      VCF0301 %in% c(1,7) ~ "Strong", 
+      VCF0301 %in% c(2,6) ~ "Weak", 
+      TRUE ~ "Other"
+    )
+  ) |>
+  count(year = VCF0004, pid_strength) |>
+  group_by(year) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup() |>
+  filter(pid_strength != "Other")
+
+#Plot Figure 1
+ggplot(figure1, aes(year, prop, linetype = pid_strength, shape = pid_strength)) + 
+  geom_line() + 
+  geom_point() + 
+  scale_y_continuous(limits=c(0,0.5)) +
+  scale_x_continuous(breaks = seq(1952, 2020, 8))+
+  labs(x=NULL, y=NULL, title="The Distribution of Party Identification, 1952-2026")
+
+#Figure 1(b): The Distribution of Party Identification, 1952-2026
+#Recode for Leaners and Pure 
+figure2 <- anes_sub |>
+  filter(VCF0004 >= 1952, VCF0301 %in% 1:7) |>
+  mutate(
+    pid_sway = case_when(
+      VCF0301 %in% c(3,5) ~ "Leaner", 
+      VCF0301 == 4 ~ "Pure", 
+      TRUE ~ "Other"
+    )
+  ) |>
+  count(year = VCF0004, pid_sway) |>
+  group_by(year) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup() |>
+  filter(pid_sway != "Other")
+
+#Plot Figure 2
+ggplot(figure2, aes(year, prop, linetype = pid_sway, shape = pid_sway)) + 
+  geom_line() + 
+  geom_point() + 
+  scale_y_continuous(limits=c(0,0.5)) +
+  scale_x_continuous(breaks = seq(1952, 2020, 8))+
+  labs(x=NULL, y=NULL, title="The Distribution of Party Identification, 1952-2026")
+
+#Questions 3
+anes2024 <- read_dta('/Users/leahkim/Desktop/academics ✩ ° ｡⋆/PAI 741/Data for HW/anes_timeseries_2024_stata_20250808.dta')
+anes2024$V241227x
+
+#Mutate and Recode 
+anes2024_sub <- anes2024 |>
+  transmute(
+    VCF0004 = 2024, 
+    VCF0301 = as.numeric(V241227x)
+  )
+anes_sub <- bind_rows(anes_sub, anes2024_sub)
+anes_sub <- filter(anes_sub, VCF0004 >= 1952)
+table(anes_sub$VCF0301)
+unique(anes_sub$VCF0004)
+
+#Recode for Figure 1 and 2 
+figure1 <- anes_sub |>
+  filter(VCF0004 >= 1952, VCF0301 %in% 1:7) |>
+  mutate(pid_strength = case_when(
+    VCF0301 %in% c(1,7) ~ "Strong", 
+    VCF0301 %in% c(2,6) ~ "Weak", 
+    TRUE ~ "Other")
+  ) |>
+  count(year = VCF0004, pid_strength) |> 
+  group_by(year) |>
+  mutate(prop = n / sum(n)) |> 
+  ungroup() |> 
+  filter(pid_strength != "Other")
+
+figure2 <- anes_sub |>
+  filter(VCF0004 >= 1952, VCF0301 %in% 1:7) |>
+  mutate(
+    pid_sway = case_when(
+      VCF0301 %in% c(3,5) ~ "Leaner", 
+      VCF0301 == 4 ~ "Pure", 
+      TRUE ~ "Other"
+    )
+  ) |>
+  count(year=VCF0004, pid_sway) |>
+  group_by(year) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup() |>
+  filter(pid_sway != "Other")
+
+#Plots for Fig 1(a) New 
+ggplot(figure1, aes(year, prop, linetype = pid_strength, shape = pid_strength)) + 
+  geom_line() + 
+  geom_point() + 
+  scale_y_continuous(limits=c(0,0.5)) +
+  scale_x_continuous(breaks = seq(1952, 2024, 8))+
+  labs(x=NULL, y=NULL, title="The Distribution of Party Identification, 1952-2026")
+
+#Plots for Fig 1(b) New
+ggplot(figure2, aes(year, prop, linetype = pid_sway, shape = pid_sway)) + 
+  geom_line() + 
+  geom_point() + 
+  scale_y_continuous(limits=c(0,0.5)) +
+  scale_x_continuous(breaks = seq(1952, 2024, 8))+
+  labs(x=NULL, y=NULL, title="The Distribution of Party Identification, 1952-2026")
+
+#Adding midterm elections 
+#Fig 1(a)
+figure1 <- figure1 |>
+  mutate(election = if_else(year %% 4 == 0, "Presidential", "Midterm"))
+#Fig 1(b)
+figure2 <- figure2 |>
+  mutate(election = if_else(year %% 4 == 0, "Presidential", "Midterm"))
+#Check work
+figure1 |> distinct(year,election) |> arrange(year) |> print(n=Inf)
+#Now plot 
+#Plots for Fig 1(a) New 
+ggplot(figure1, aes(year, prop, linetype = pid_strength, shape = pid_strength)) + 
+  geom_line() + 
+  geom_point(aes(shape = election)) + 
+  scale_shape_manual(values = c(Presidential = 16, Midterm =1)) + 
+  scale_y_continuous(limits=c(0,0.5)) +
+  scale_x_continuous(breaks = seq(1952, 2024, 8))+
+  labs(x=NULL, y=NULL, title="The Distribution of Party Identification, 1952-2026")
+
+#Plots for Fig 1(b) New
+ggplot(figure2, aes(year, prop, linetype = pid_sway, shape = pid_sway)) + 
+  geom_line() + 
+  geom_point(aes(shape = election)) + 
+  scale_shape_manual(values = c(Presidential = 16, Midterm = 1))+
+  scale_y_continuous(limits=c(0,0.5)) +
+  scale_x_continuous(breaks = seq(1952, 2024, 8))+
+  labs(x=NULL, y=NULL, title="The Distribution of Party Identification, 1952-2026")
+
+
+#OWN WORK 
+#Approve/Disapprove House Incumbent V242163x 
+anes2024 <- anes2024 |>
+  mutate(approval_incumbent = case_when(
+    V242163x == 1 ~ 1, 
+    V242163x == 2 ~ 2, 
+    V242163x == 3 ~ 3, 
+    V242163x == 4 ~ 4,
+    TRUE ~ NA
+  ))
+#CLT 
+mean(anes2024$approval_incumbent, na.rm=TRUE)
+sd(anes2024$approval_incumbent, na.rm=TRUE)
+#Distribution 
+barplot(table(anes2024$approval_incumbent),
+        main = "Distribution of Approval Ratings of the House Incumbent", 
+        xlab = "Scale of Approval",
+        ylab = "Number of Respondents", 
+        names.arg = c("Approve Strongly", "Approve not Strongly", 
+                      "Disapprove not strongly", "Disapprove Srongly"))
+#Favor/Oppose New Limits on Imports V242226x
+anes2024 <- anes2024 |>
+  mutate(import_favor = case_when(
+    V242226x == 1 ~ 1, 
+    V242226x == 2 ~ 2, 
+    V242226x == 3 ~ 3, 
+    V242226x == 4 ~ 4,
+    TRUE ~ NA
+  ))
+#CLT 
+mean(anes2024$import_favor, na.rm=TRUE)
+sd(anes2024$import_favor, na.rm=TRUE)
+#Distribution 
+barplot(table(anes2024$import_favor),
+        main = "Distribution of Opinion on New Limits on Imports", 
+        xlab = "Scale of Opinion(Favor/Oppose)",
+        ylab = "Number of Respondents", 
+        names.arg = c("Favor Strongly", "Favor Not Strongly", 
+                      "Oppose Not Strongly", "Oppose strongly"))
+                      
+#WRITE UP 
+**1. Where did you encounter problems with this replication? Was there anything that was particularly tricky?** 
+This assignment was difficult on multiple parts. It was difficult to also ungroup the "other" since that group wasn't needed for each specific graph I was making. I also did have to learn how to mutate for the proportion which was interesting, but it was difficult because I wasn't sure how to fix this issue/how to make the code work. I wanted to learn more about ggplot and so learning what to do and understanding the commands for ggplot was difficult, but it was worth it. Then when coding with the 2024 data, I had a hard time first understanding to do the binding rows to allow for one data set to be used and to do similar coding for the first figures in general. Lastly, the hardest thing was learning to do the midterm and presidential information to add to the figures. I knew conceptually I wanted to have them as its own legend, but learning the specific code in ggplot for the scale shape was a lot of digging. This assignment utilized Claude for help with my code, because when I initially researched ways to use the code to help with my problem with the cheat sheet, I would miss things that would help me complete my code fully. I also wanted to learn how to make things more efficient with the piping and double checking if I could do stuff. When I didn't understand something, I would look at the cheat sheet first, and then try and find through the research and slides, and then AI if I couldn't find the direct help. 
+
+**2. How would you interpret (explain) what Bartels found in figures 1 & 2?** 
+Figure 1 is representing the distribution of party identification, but specifically if they are strong are weak in terms of their political identification. Over time, there has been an increase in strong identifying voters and a decrease in the weak identifying voters. This is showing there has been an increase in the bipartisan issue in American recently. Figure 2 is representing the distribution of party identification, but specifically if they are leaning or pure in terms of their political identification. Over time, there has been an increase in more people identifying as a leaner independent in their political views, and a decrease in people identifying as a pure independent. It's interesting to see that over time, people have become less purely independent and has become more leaning to the other political views. 
+**3. Has anything changed since 1996 that would alter the substantive takeaway points in their findings?**
+People who were strong identifiers in their political views dropped low in the 1970s but then increased in around 2020.The weak identifiers also kept decreasing since 1996. Independents are still mostly leaner rather than pure independents. This could be due large amount of reasons like the political environment at the time, trend of politics, type of politicians running, etc. 
+**4. Does anything change about the analysis in a substantive way when you include midterm election years?** 
+The analysis of including midterm elections years doesn't really change anything, it just adds more information with the knowing when the midterm years are. But, the overall trend of the graph is the same. 
